@@ -2014,6 +2014,61 @@ HandleEnemyMonFaint:
 	and a
 	jp z, LostBattle
 
+	; --- Resync the Linear Mode Index (advance from the slot that just fainted) ---
+	ld a, [wEnemyMonLinearFlag]
+	and a
+	jr z, .no_linear_resync
+
+	ld a, [wCurOTMon]        ; 0-based slot of the mon that just fainted
+	inc a                    ; candidate = next slot
+	ld b, a
+	ld a, [wOTPartyCount]
+	ld c, a                  ; safety counter = party size
+	dec a                    ; A = last valid index (partycount - 1)
+	cp b
+	jr nc, .ok_linear
+	ld b, 0                  ; wrap if past end
+.ok_linear
+
+	; If wild battle, just store and exit
+	ld a, [wBattleMode]
+	dec a
+	jr z, .store_linear_index
+
+.check_loop
+	; if we've checked all slots, bail out
+	dec c
+	jr z, .all_fainted
+
+	; test candidate mon HP
+	ld a, b
+	ld hl, wOTPartyMon1HP
+	push bc
+	call GetPartyLocation
+	ld a, [hli]
+	or [hl]
+	pop bc
+	jr nz, .store_linear_index   ; found a living mon
+
+	; candidate fainted → advance and wrap
+	inc b
+	ld a, [wOTPartyCount]
+	dec a
+	cp b
+	jr nc, .check_loop
+	ld b, 0
+	jr .check_loop
+
+.all_fainted
+	; every slot fainted, don’t update linear index
+	jr .no_linear_resync
+
+.store_linear_index
+	ld a, b
+	ld [wEnemyLinearIndex], a
+.no_linear_resync
+	; --- end resync ---
+
 	ld hl, wBattleMonHP
 	ld a, [hli]
 	or [hl]
@@ -2341,7 +2396,54 @@ EnemyPartyMonEntrance:
 	xor a
 	ld [wEnemyMoveStruct + MOVE_ANIM], a
 	ld [wBattlePlayerAction], a
-	inc a
+	--- Linear Switching --- Advance persistent point to the next alive Pokemon after the one that just entered ---
+    ld a, [wEnemyMonLinearFlag]
+    and a
+    jr z, .linear_done
+
+;;  -- The next two lines will ensure that when you've Whirlwinded a Pokemon away and defeated the next one,
+;;  -- it will still go onto the next Pokemon in the list.
+
+     ld a, b                     ; b = chosen mon slot (already set earlier)
+    ld [wEnemyLinearIndex], a   ; update linear pointer to match actual entry
+
+    ; start from the slot AFTER the current one
+    ld a, [wCurOTMon]
+    inc a                         ; candidate = current + 1
+    ld b, a                       ; B = candidate (0-based)
+
+    ; C = party count
+    ld a, [wOTPartyCount]
+    ld c, a
+
+.linear_scan
+    ld a, b
+    cp c
+    jr nc, .linear_no_more        ; ran past end of party -> no next
+
+ ; Check for Alive Pokemon 
+    push bc
+    ld hl, wOTPartyMon1HP
+    call GetPartyLocation         ; expects A = index
+    ld a, [hli]
+    or [hl]
+    pop bc
+    jr nz, .linear_found          ; found an alive mon
+
+    inc b
+    jr .linear_scan
+
+.linear_found
+    ld a, b
+    ld [wEnemyLinearIndex], a     ; persist next (0-based)
+    jr .linear_done
+
+.linear_no_more
+    xor a
+    ld [wEnemyLinearIndex], a     ; no next; zero it (harmless)
+.linear_done
+; --- end LINEAR hook ---	
+	inc a 
 	ret
 
 WinTrainerBattle:
@@ -3168,6 +3270,25 @@ EnemySwitch_SetMode:
 	jp ShowSetEnemyMonAndSendOutAnimation
 
 CheckWhetherSwitchmonIsPredetermined:
+; returns with carry flag (c) set and b = index (0-based) if predetermined
+; otherwise c clear and fall through to "normal"
+
+    ; forced switch (Roar/Whirlwind/Teleport) must bypass linear
+    ld a, [wForcedSwitch]
+    and a
+    jr nz, .normal
+	
+    ; if not using linear order, do normal
+    ld a, [wEnemyMonLinearFlag]
+    and a
+    jr z, .normal
+
+    ; use persistent zero-based linear pointer
+    ld a, [wEnemyLinearIndex]
+    ld b, a
+    jr .return_carry
+
+.normal
 ; returns the enemy switchmon index in b, or
 ; returns carry if the index is not yet determined.
 	ld a, [wLinkMode]
@@ -8410,6 +8531,8 @@ ExitBattle:
 CleanUpBattleRAM:
 	call BattleEnd_HandleRoamMons
 	xor a
+	ld [wEnemyMonLinearFlag], a
+	ld [wEnemyLinearIndex], a
 	ld [wLowHealthAlarm], a
 	ld [wBattleMode], a
 	ld [wBattleType], a

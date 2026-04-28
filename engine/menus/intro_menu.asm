@@ -213,6 +213,10 @@ endc
 	inc hl
 	ld [hl], LOW(MOM_MONEY)
 
+	xor a
+	ld [wEnemyMonLinearFlag], a
+	ld [wEnemyMonLinearIndex], a
+
 	call InitializeNPCNames
 
 	farcall InitDecorations
