@@ -6106,17 +6106,139 @@ LoadEnemyMon:
 ; We're done with DVs
 	jr .UpdateDVs
 
+
 .NotRoaming:
-; Register a contains wBattleType
 
-; Forced shiny battle type
-; Used by Red Gyarados at Lake of Rage
-	cp BATTLETYPE_FORCESHINY
-	jr nz, .GenerateDVs
+    cp BATTLETYPE_FORCESHINY
+    jr nz, .TryShinyRolls
+	
+    jp .AlwaysShiny        ; Forced Shiny Encounter
 
-	ld b, ATKDEFDV_SHINY ; $ea
-	ld c, SPDSPCDV_SHINY ; $aa
-	jr .UpdateDVs
+	
+.TryShinyRolls:
+	; Try to roll for a shiny encounter
+	call Random            ; 8-bit random -> a
+    ld b, a
+    call Random            ; 8-bit random -> a
+    ld c, a
+
+    ; Combine into 16-bit: b = high, c = low
+    ; Reduce to 0–4095
+    ld a, b
+    and $0F                ; low nibble 0–15
+    ld h, a
+    ld l, c
+
+    ; Only jump to AlwaysShiny if exactly 4095
+    ld a, h
+    cp 15
+    jr nz, .NormalDVs
+    ld a, l
+    cp 127
+    jr nz, .NormalDVs
+	jp .AlwaysShiny
+
+.AlwaysShiny:
+; --- Pick a random valid shiny DV combination ---
+
+    call Random
+    and %00000111        ; pick 0–7
+    ld e, a              ; save choice
+
+    ; Map choice to valid shiny Attack DV
+    ld a, e
+    cp 0
+    jr z, .S0
+    cp 1
+    jr z, .S1
+    cp 2
+    jr z, .S2
+    cp 3
+    jr z, .S3
+    cp 4
+    jr z, .S4
+    cp 5
+    jr z, .S5
+    cp 6
+    jr z, .S6
+    ; else combo 7
+	jp .S7
+
+.S7:
+    ld b, $FA
+    ld c, $AA
+    jp .UpdateDVs
+.S6:
+    ld b, $EA
+    ld c, $AA
+    jp .UpdateDVs
+.S5:
+    ld b, $BA
+    ld c, $AA
+    jp .UpdateDVs
+.S4:
+    ld b, $AA
+    ld c, $AA
+    jp .UpdateDVs
+.S3:
+    ld b, $7A
+    ld c, $AA
+    jp .UpdateDVs
+.S2:
+    ld b, $6A
+    ld c, $AA
+    jp .UpdateDVs
+.S1:
+    ld b, $3A
+    ld c, $AA
+    jp .UpdateDVs
+.S0:
+    ld b, $2A
+    ld c, $AA
+    jp .UpdateDVs
+	
+.NormalDVs:
+; --- Normal random DV generation ---
+    call BattleRandom
+	ld b, a
+	call BattleRandom
+	ld c, a
+	; hl points to Pokémon DVs in memory
+	ld a, [hl]      ; Attack/Defense DV byte
+	ld b, a
+	and $F0         ; high nibble = Attack
+	srl a
+	srl a
+	and %00000011   ; Attack DV mod 4 -> a
+	cp $02          ; compare with 2
+	jr z, .CheckShinyDefense
+	cp $03
+	jr z, .CheckShinyDefense
+	; Not shiny
+	jr .NotShiny
+
+.CheckShinyDefense:
+    ld a, [hl]        ; Attack/Defense DV byte
+    and $0F           ; low nibble = Defense
+    cp $0A
+    jr nz, .NotShiny
+
+    inc hl            ; move to next byte (Speed/Special)
+    ld a, [hl]        ; Speed/Special DV byte
+    and $F0           ; high nibble = Speed
+    cp $A0            ; compare with 10 << 4
+    jr nz, .NotShiny
+    ld a, [hl]
+    and $0F           ; low nibble = Special
+    cp $0A
+    jr nz, .NotShiny
+
+    ; If reached here, Pokémon is shiny
+    jr .NormalDVs
+
+
+.NotShiny:
+	; normal handling
 
 .GenerateDVs:
 ; Generate new random DVs
