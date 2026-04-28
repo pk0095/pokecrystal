@@ -58,6 +58,8 @@ StdScripts::
 	add_stdscript HappinessCheckScript
 
 PokecenterNurseScript:
+; EVENT_WELCOMED_TO_POKECOM_CENTER is never set
+
 	opentext
 	checktime MORN
 	iftrue .morn
@@ -68,31 +70,42 @@ PokecenterNurseScript:
 	sjump .ok
 
 .morn
+	checkevent EVENT_WELCOMED_TO_POKECOM_CENTER
+	iftrue .morn_comcenter
 	farwritetext NurseMornText
 	promptbutton
-	checkevent EVENT_WELCOMED_TO_POKECOM_CENTER
-	iffalse .ok_first_time
+	sjump .ok
+.morn_comcenter
+	farwritetext PokeComNurseMornText
+	promptbutton
 	sjump .ok
 
 .day
+	checkevent EVENT_WELCOMED_TO_POKECOM_CENTER
+	iftrue .day_comcenter
 	farwritetext NurseDayText
 	promptbutton
-	checkevent EVENT_WELCOMED_TO_POKECOM_CENTER
-	iffalse .ok_first_time
+	sjump .ok
+.day_comcenter
+	farwritetext PokeComNurseDayText
+	promptbutton
 	sjump .ok
 
 .nite
+	checkevent EVENT_WELCOMED_TO_POKECOM_CENTER
+	iftrue .nite_comcenter
 	farwritetext NurseNiteText
 	promptbutton
-	checkevent EVENT_WELCOMED_TO_POKECOM_CENTER
-	iffalse .ok_first_time
+	sjump .ok
+.nite_comcenter
+	farwritetext PokeComNurseNiteText
+	promptbutton
 	sjump .ok
 
-.ok_first_time
-	farwritetext NurseCenterWelcomeText
-	promptbutton
-
 .ok
+	; only do this once
+	clearevent EVENT_WELCOMED_TO_POKECOM_CENTER
+
 	farwritetext NurseAskHealText
 	yesorno
 	iffalse .done
@@ -119,14 +132,11 @@ PokecenterNurseScript:
 	iftrue .pokerus
 .no
 
-    checkevent EVENT_WELCOMED_TO_POKECOM_CENTER
-	iftrue .done
 	farwritetext NurseReturnPokemonText
 	pause 20
 
 .done
 	farwritetext NurseGoodbyeText
-	setevent EVENT_WELCOMED_TO_POKECOM_CENTER
 
 	turnobject LAST_TALKED, UP
 	pause 10

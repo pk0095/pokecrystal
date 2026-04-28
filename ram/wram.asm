@@ -71,9 +71,7 @@ wMusicFade::
 wMusicFadeCount:: db
 wMusicFadeID:: dw
 
-wEnemyMonLinearFlag:: db
-wEnemyMonLinearIndex:: db
-    ds 3
+	ds 5
 
 wCryPitch:: dw
 wCryLength:: dw

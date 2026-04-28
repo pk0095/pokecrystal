@@ -1,28 +1,60 @@
 NurseMornText:
 	text "Good morning!"
+	line "Welcome to our"
+	cont "#MON CENTER."
 	done
 
 NurseDayText:
 	text "Hello!"
+	line "Welcome to our"
+	cont "#MON CENTER."
 	done
 
 NurseNiteText:
 	text "Good evening!"
 	line "You're out late."
 
+	para "Welcome to our"
+	line "#MON CENTER."
 	done
 
-NurseCenterWelcomeText:
-	text "Welcome to our"
-	line "#MON CENTER."
+PokeComNurseMornText:
+	text "Good morning!"
 
-	para "We can heal your"
-	line "#MON to perfect"
-	cont "health."
+	para "This is the #-"
+	line "MON COMMUNICATION"
+
+	para "CENTER--or the"
+	line "#COM CENTER."
+	done
+
+PokeComNurseDayText:
+	text "Hello!"
+
+	para "This is the #-"
+	line "MON COMMUNICATION"
+
+	para "CENTER--or the"
+	line "#COM CENTER."
+	done
+
+PokeComNurseNiteText:
+	text "Good to see you"
+	line "working so late."
+
+	para "This is the #-"
+	line "MON COMMUNICATION"
+
+	para "CENTER--or the"
+	line "#COM CENTER."
 	done
 
 NurseAskHealText:
-	text "Shall we heal your"
+	text "We can heal your"
+	line "#MON to perfect"
+	cont "health."
+
+	para "Shall we heal your"
 	line "#MON?"
 	done
 
